@@ -1,3 +1,3 @@
-module github.com/platonso/WB-L0
+module github.com/platonso/order-viewer
 
 go 1.24

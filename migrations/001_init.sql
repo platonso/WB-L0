@@ -3,7 +3,7 @@ CREATE table IF NOT EXISTS orders (
     track_number TEXT,
     entry TEXT,
     locale TEXT,
-    internal_signature TEXT.
+    internal_signature TEXT,
     customer_id TEXT,
     delivery_service TEXT,
     shardkey TEXT,
