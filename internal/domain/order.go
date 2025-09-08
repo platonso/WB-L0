@@ -1,6 +1,8 @@
 package domain
 
-import "time"
+import (
+	"time"
+)
 
 type Order struct {
 	OrderUID          string    `json:"order_uid"`

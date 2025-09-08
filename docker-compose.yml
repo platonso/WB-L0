@@ -1,0 +1,43 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: order-viewer-db
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - order-viewer-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $POSTGRES_USER" ]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+
+    networks:
+      - order-viewer-network
+
+  backend:
+    build: .
+    image: order-viewer:latest
+    container_name: order-viewer-backend
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - order-viewer-network
+
+networks:
+  order-viewer-network:
+    name: order-viewer-network
+    driver: bridge
+
+volumes:
+  order-viewer-data:
+    name: order-viewer-data
