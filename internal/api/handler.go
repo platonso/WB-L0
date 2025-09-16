@@ -3,10 +3,12 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/platonso/order-viewer/internal/domain"
 	"github.com/platonso/order-viewer/internal/service"
 	"net/http"
+	"time"
 )
 
 type Handler struct {
@@ -42,6 +44,8 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
+	start := time.Now() // замер начала обработки
+
 	orderUID := chi.URLParam(r, "order_uid")
 
 	order, fromCache, err := h.orderService.GetOrder(r.Context(), orderUID)
@@ -62,6 +66,12 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.Header().Set("X-Data-Source", "database")
 	}
+
+	// Время ответа сервера
+	duration := time.Since(start)
+	// Преобразуем в миллисекунды как число с точкой
+	ms := float64(duration.Nanoseconds()) / float64(time.Millisecond)
+	w.Header().Set("X-Response-Time", fmt.Sprintf("%.3f", ms))
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(order)

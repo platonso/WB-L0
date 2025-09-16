@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru" xmlns:margin-bottom="http://www.w3.org/1999/xhtml">
+<html lang="ru">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,7 +18,7 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       margin: 0;
       padding: 20px;
-      background: var(--background);
+      background: #ebebeb;
     }
 
     .container {
@@ -84,14 +84,6 @@
       display: none;
     }
 
-    .order-card {
-      background: white;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
     .section-title {
       color: var(--primary);
       border-bottom: 2px solid #e2e8f0;
@@ -116,13 +108,6 @@
       color: var(--secondary);
       font-size: 14px;
     }
-
-    /* Стили для подсветки синтаксиса JSON */
-    .json-view .key { color: #ff79c6; }
-    .json-view .string { color: #50fa7b; }
-    .json-view .number { color: #bd93f9; }
-    .json-view .boolean { color: #ff79c6; }
-    .json-view .null { color: #ff5555; }
   </style>
 </head>
 <body>
@@ -134,7 +119,7 @@
 
   <div class="search-box">
     <input type="text" id="orderId" placeholder="Введите ID заказа" onkeypress="handleKeyPress(event)">
-    <button onclick="getOrder()" id="searchBtn">Найти</button>
+    <button onclick="getOrder()" id="searchBtn" style="font-size: 15px;">Поиск</button>
   </div>
 
   <div id="loading" style="display: none;">
@@ -177,8 +162,8 @@
       return;
     }
 
-    if (orderId.length > 50) {
-      showError('ID заказа слишком длинный (максимум 50 символов)');
+    if (orderId.length > 36) {
+      showError('ID заказа слишком длинный (максимум 36 символов)');
       return;
     }
 
@@ -186,21 +171,19 @@
     searchBtn.disabled = true;
 
     try {
-      const startTime = performance.now();
       const response = await fetch(`/order/${encodeURIComponent(orderId)}`);
-      const endTime = performance.now();
-      const responseTime = Math.round(endTime - startTime);
 
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(getErrorMessage(response.status, errorText));
       }
 
-      // Получаем источник данных из заголовка
+      // Получаем источник данных и время ответа от сервера
       const dataSource = response.headers.get('X-Data-Source');
-      const order = await response.json();
+      let responseTimeMs = parseFloat(response.headers.get('X-Response-Time') || '0').toFixed(3);
 
-      displayOrder(order, responseTime, dataSource);
+      const order = await response.json();
+      displayOrder(order, responseTimeMs, dataSource);
 
     } catch (error) {
       showError(error.message);
@@ -210,7 +193,8 @@
     }
   }
 
-  function showError(message) {
+
+    function showError(message) {
     const errorDiv = document.getElementById('error');
     errorDiv.textContent = message;
     errorDiv.style.display = 'block';
