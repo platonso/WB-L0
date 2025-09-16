@@ -3,13 +3,14 @@ package app
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/platonso/order-viewer/internal/api"
 	"github.com/platonso/order-viewer/internal/config"
 	"github.com/platonso/order-viewer/internal/repository"
 	"github.com/platonso/order-viewer/internal/service"
-	"log"
-	"net/http"
 )
 
 type Application struct {

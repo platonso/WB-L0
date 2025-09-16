@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru" xmlns:margin-bottom="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Viewer</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --secondary: #64748b;
+      --success: #10b981;
+      --danger: #ef4444;
+      --background: #f8fafc;
+      --card: #ffffff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: var(--background);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: var(--card);
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+      color: var(--primary);
+    }
+
+    .search-box {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    input {
+      flex: 1;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    button {
+      padding: 12px 24px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    button:disabled {
+      background: var(--secondary);
+      cursor: not-allowed;
+    }
+
+    #loading {
+      text-align: center;
+      color: var(--secondary);
+    }
+
+    #result {
+      margin-top: 2rem;
+      display: none;
+    }
+
+    .order-card {
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      color: var(--primary);
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 0.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .json-view {
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 1rem;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 14px;
+    }
+
+    .stats {
+      display: flex;
+      gap: 1rem;
+      margin-top: 1rem;
+      color: var(--secondary);
+      font-size: 14px;
+    }
+
+    /* Стили для подсветки синтаксиса JSON */
+    .json-view .key { color: #ff79c6; }
+    .json-view .string { color: #50fa7b; }
+    .json-view .number { color: #bd93f9; }
+    .json-view .boolean { color: #ff79c6; }
+    .json-view .null { color: #ff5555; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>📦 Просмотр заказов</h1>
+    <p>Введите ID заказа, чтобы получить детальную информацию</p>
+  </div>
+
+  <div class="search-box">
+    <input type="text" id="orderId" placeholder="Введите ID заказа" onkeypress="handleKeyPress(event)">
+    <button onclick="getOrder()" id="searchBtn">Найти</button>
+  </div>
+
+  <div id="loading" style="display: none;">
+    <p>Загрузка данных заказа...</p>
+  </div>
+
+  <div id="error" style="display: none; color: var(--danger);"></div>
+
+  <div id="result">
+    <h2 class="section-title">Детали заказа</h2>
+    <div class="stats" style="margin-bottom: 20px;">
+      <span id="responseTime"></span>
+      <span id="cacheStatus"></span>
+    </div>
+    <div class="json-view" id="orderData"></div>
+  </div>
+</div>
+
+<script>
+
+  function handleKeyPress(event) {
+    if (event.key === 'Enter') {
+      getOrder();
+    }
+  }
+
+  async function getOrder() {
+    const orderId = document.getElementById('orderId').value.trim();
+    const resultDiv = document.getElementById('result');
+    const errorDiv = document.getElementById('error');
+    const loadingDiv = document.getElementById('loading');
+    const searchBtn = document.getElementById('searchBtn');
+
+    errorDiv.style.display = 'none';
+    resultDiv.style.display = 'none';
+    errorDiv.textContent = '';
+
+    if (!orderId) {
+      showError('Пожалуйста, введите ID заказа');
+      return;
+    }
+
+    if (orderId.length > 50) {
+      showError('ID заказа слишком длинный (максимум 50 символов)');
+      return;
+    }
+
+    loadingDiv.style.display = 'block';
+    searchBtn.disabled = true;
+
+    try {
+      const startTime = performance.now();
+      const response = await fetch(`/order/${encodeURIComponent(orderId)}`);
+      const endTime = performance.now();
+      const responseTime = Math.round(endTime - startTime);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(getErrorMessage(response.status, errorText));
+      }
+
+      // Получаем источник данных из заголовка
+      const dataSource = response.headers.get('X-Data-Source');
+      const order = await response.json();
+
+      displayOrder(order, responseTime, dataSource);
+
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      loadingDiv.style.display = 'none';
+      searchBtn.disabled = false;
+    }
+  }
+
+  function showError(message) {
+    const errorDiv = document.getElementById('error');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+  }
+
+  function displayOrder(order, responseTime, dataSource) {
+    const resultDiv = document.getElementById('result');
+    const orderDataDiv = document.getElementById('orderData');
+    const responseTimeSpan = document.getElementById('responseTime');
+    const cacheStatusSpan = document.getElementById('cacheStatus');
+
+    // Время ответа
+    responseTimeSpan.textContent = `Время ответа: ${responseTime}мс`;
+
+    // Источник данных
+    if (dataSource === 'cache') {
+      cacheStatusSpan.textContent = '✓ Данные из кеша';
+      cacheStatusSpan.style.color = '#10b981';
+    } else {
+      cacheStatusSpan.textContent = '✓ Данные из базы данных';
+      cacheStatusSpan.style.color = '#3b82f6';
+    }
+
+    function getValue(obj, key) {
+      return (obj && obj[key] !== undefined && obj[key] !== null) ? obj[key] : '';
+    }
+
+    // Формируем таблицу с данными заказа
+    let html = `<h3>Order</h3><table border="1" cellpadding="5" cellspacing="0">`;
+
+    const topFields = ["order_uid", "track_number", "entry", "locale", "internal_signature", "customer_id", "delivery_service", "shardkey", "sm_id", "date_created", "oof_shard"];
+    topFields.forEach(field => {
+      html += `<tr><th>${field}</th><td>${getValue(order, field)}</td></tr>`;
+    });
+    html += `</table>`;
+
+    // Delivery
+    html += `<h3>Delivery</h3><table border="1" cellpadding="5" cellspacing="0">`;
+    const deliveryFields = ["name","phone","zip","city","address","region","email"];
+    deliveryFields.forEach(field => {
+      html += `<tr><th>${field}</th><td>${getValue(order.delivery, field)}</td></tr>`;
+    });
+    html += `</table>`;
+
+    // Payment
+    html += `<h3>Payment</h3><table border="1" cellpadding="5" cellspacing="0">`;
+    const paymentFields = ["transaction","request_id","currency","provider","amount","payment_dt","bank","delivery_cost","goods_total","custom_fee"];
+    paymentFields.forEach(field => {
+      let value = getValue(order.payment, field);
+      // Преобразуем timestamp в дату
+      if (field === "payment_dt" && value) {
+        value = new Date(value * 1000).toLocaleString();
+      }
+      html += `<tr><th>${field}</th><td>${value}</td></tr>`;
+    });
+    html += `</table>`;
+
+    // Items
+    html += `<h3>Items</h3><table border="1" cellpadding="5" cellspacing="0"><tr>`;
+    const itemFields = ["chrt_id","track_number","price","rid","name","sale","size","total_price","nm_id","brand","status"];
+    itemFields.forEach(field => { html += `<th>${field}</th>` });
+    html += `</tr>`;
+
+    order.items.forEach(item => {
+      html += `<tr>`;
+      itemFields.forEach(field => {
+        html += `<td>${getValue(item, field)}</td>`;
+      });
+      html += `</tr>`;
+    });
+    html += `</table>`;
+
+    orderDataDiv.innerHTML = html;
+    resultDiv.style.display = 'block';
+  }
+
+  function getErrorMessage(status, errorText) {
+    switch (status) {
+      case 400:
+        return 'Неверный формат ID заказа';
+      case 404:
+        return 'Заказ не найден';
+      case 500:
+        return 'Ошибка сервера. Попробуйте позже';
+      default:
+        return errorText || `Ошибка: ${status}`;
+    }
+  }
+
+  // Автозаполнение примеров
+  function setupAutocomplete() {
+    const orderIdInput = document.getElementById('orderId');
+
+    orderIdInput.addEventListener('focus', function() {
+      if (!this.value) {
+        this.placeholder = 'Например: b563feb7b2b84b6test';
+      }
+    });
+
+    orderIdInput.addEventListener('blur', function() {
+      this.placeholder = 'Введите ID заказа';
+    });
+  }
+
+  // Инициализация
+  document.addEventListener('DOMContentLoaded', function() {
+    setupAutocomplete();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const demoId = urlParams.get('demo');
+    if (demoId) {
+      document.getElementById('orderId').value = demoId;
+    }
+  });
+</script>
+</body>
+</html>

@@ -42,40 +42,41 @@ func (s *OrderService) SaveOrder(ctx context.Context, order *domain.Order) error
 	return nil
 }
 
-func (s *OrderService) GetOrder(ctx context.Context, orderUID string) (*domain.Order, error) {
+func (s *OrderService) GetOrder(ctx context.Context, orderUID string) (*domain.Order, bool, error) {
 
 	// Валидация uid заказа
 	if orderUID == "" {
-		return nil, fmt.Errorf("%w: order id is required", domain.ErrValidation)
+		return nil, false, fmt.Errorf("%w: order id is required", domain.ErrValidation)
 	}
 
 	if len(orderUID) > 36 {
-		return nil, fmt.Errorf("%w: order id is too long", domain.ErrValidation)
+		return nil, false, fmt.Errorf("%w: order id is too long", domain.ErrValidation)
 	}
 
 	validID := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	if !validID.MatchString(orderUID) {
-		return nil, fmt.Errorf("%w: order id contains invalid characters", domain.ErrValidation)
+		return nil, false, fmt.Errorf("%w: order id contains invalid characters", domain.ErrValidation)
 	}
 
 	// Попытка достать заказ из кэша
-	if order, ok := s.cacheRepo.FindByID(orderUID); ok {
-		return order, nil
+	order, ok := s.cacheRepo.FindByID(orderUID)
+	if ok {
+		return order, true, nil
 	}
 
 	// При отсутствии заказа в кэше, поиск его в бд
 	order, err := s.dbRepo.FindByID(ctx, orderUID)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	// Добавление заказа в кэш, если он нашёлся в бд
 	if order != nil {
 		s.cacheRepo.Save(order)
-		return order, nil
+		return order, false, nil
 	}
 
-	return nil, domain.ErrOrderNotFound
+	return nil, false, domain.ErrOrderNotFound
 }
 
 func (s *OrderService) validateOrder(order *domain.Order) error {

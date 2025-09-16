@@ -44,7 +44,7 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 	orderUID := chi.URLParam(r, "order_uid")
 
-	order, err := h.orderService.GetOrder(r.Context(), orderUID)
+	order, fromCache, err := h.orderService.GetOrder(r.Context(), orderUID)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrValidation):
@@ -55,6 +55,12 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "failed to fetch order", http.StatusInternalServerError)
 		}
 		return
+	}
+
+	if fromCache {
+		w.Header().Set("X-Data-Source", "cache")
+	} else {
+		w.Header().Set("X-Data-Source", "database")
 	}
 
 	w.Header().Set("Content-Type", "application/json")
