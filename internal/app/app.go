@@ -4,19 +4,19 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-playground/validator/v10"
+	"github.com/platonso/order-viewer/internal/api"
 	"github.com/platonso/order-viewer/internal/config"
 	"github.com/platonso/order-viewer/internal/repository"
 	"github.com/platonso/order-viewer/internal/service"
-	"github.com/platonso/order-viewer/internal/transport/httpapi"
 	"log"
 	"net/http"
 )
 
 type Application struct {
 	Config    *config.Config
-	DB        repository.Repository
+	DB        repository.DBRepository
+	Cache     repository.CacheRepository
 	Validator *validator.Validate
-	//	KafkaConsumer *kafka.Consumer
 }
 
 func NewApp(ctx context.Context, cfg *config.Config) (*Application, error) {
@@ -25,27 +25,30 @@ func NewApp(ctx context.Context, cfg *config.Config) (*Application, error) {
 		return nil, fmt.Errorf("failed to create order repository: %w", err)
 	}
 
+	cacheRepo := repository.NewCacheRepo()
+
 	validate := validator.New()
 
 	return &Application{
 		Config:    cfg,
 		DB:        postgresRepo,
+		Cache:     cacheRepo,
 		Validator: validate,
 	}, nil
 }
 
-func (a *Application) Run(ctx context.Context) error {
-	orderService := service.NewOrderService(a.DB)
+func (app *Application) Run(ctx context.Context) error {
+	orderService := service.NewOrderService(app.DB, app.Cache)
 
-	handler := httpapi.NewHandler(orderService)
-	router := httpapi.NewRouter(handler)
+	handler := api.NewHandler(orderService)
+	router := api.NewRouter(handler)
 
 	srv := &http.Server{
-		Addr:    ":" + a.Config.Port,
+		Addr:    ":" + app.Config.Port,
 		Handler: router,
 	}
 
-	log.Printf("Server is running on port %s", a.Config.Port)
+	log.Printf("Server is running on port %s", app.Config.Port)
 
 	return srv.ListenAndServe()
 }

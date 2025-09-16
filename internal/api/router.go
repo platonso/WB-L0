@@ -1,4 +1,4 @@
-package httpapi
+package api
 
 import (
 	"github.com/go-chi/chi/v5"
@@ -9,7 +9,7 @@ func NewRouter(h *Handler) http.Handler {
 	r := chi.NewRouter()
 
 	r.Get("/order/{order_uid}", h.GetOrder)
-	r.Post("/ordes", h.CreateOrder)
+	r.Post("/order", h.CreateOrder)
 
 	return r
 }

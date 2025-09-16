@@ -1,7 +1,8 @@
-package httpapi
+package api
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/platonso/order-viewer/internal/domain"
 	"github.com/platonso/order-viewer/internal/service"
@@ -25,7 +26,14 @@ func (h *Handler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.orderService.SaveOrder(r.Context(), &order); err != nil {
-		http.Error(w, "failed to save order", http.StatusInternalServerError)
+		switch {
+		case errors.Is(err, domain.ErrValidation):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case errors.Is(err, domain.ErrOrderAlreadyExists):
+			http.Error(w, "order already exists", http.StatusConflict)
+		default:
+			http.Error(w, "failed to save order", http.StatusInternalServerError)
+		}
 		return
 	}
 
@@ -38,7 +46,14 @@ func (h *Handler) GetOrder(w http.ResponseWriter, r *http.Request) {
 
 	order, err := h.orderService.GetOrder(r.Context(), orderUID)
 	if err != nil {
-		http.Error(w, domain.ErrOrderNotFound.Error(), http.StatusNotFound)
+		switch {
+		case errors.Is(err, domain.ErrValidation):
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		case errors.Is(err, domain.ErrOrderNotFound):
+			http.Error(w, "order not found", http.StatusNotFound)
+		default:
+			http.Error(w, "failed to fetch order", http.StatusInternalServerError)
+		}
 		return
 	}
 

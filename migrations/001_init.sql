@@ -13,7 +13,6 @@ CREATE table IF NOT EXISTS orders (
 );
 
 CREATE TABLE IF NOT EXISTS deliveries (
-    id SERIAL PRIMARY KEY,
     order_uid TEXT REFERENCES orders(order_uid),
     name TEXT,
     phone TEXT,
@@ -25,7 +24,6 @@ CREATE TABLE IF NOT EXISTS deliveries (
 );
 
 CREATE TABLE IF NOT EXISTS payments (
-    id SERIAL PRIMARY KEY,
     order_uid TEXT REFERENCES orders(order_uid),
     transaction TEXT,
     request_id TEXT,
@@ -40,7 +38,6 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 CREATE TABLE IF NOT EXISTS items (
-   id SERIAL PRIMARY KEY,
    order_uid TEXT REFERENCES orders(order_uid),
    chrt_id INT,
    track_number TEXT,
