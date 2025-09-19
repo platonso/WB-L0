@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
+	"log"
+
 	"github.com/platonso/order-viewer/internal/app"
 	"github.com/platonso/order-viewer/internal/config"
 	"github.com/platonso/order-viewer/migrations"
-	"log"
 )
 
 func main() {
@@ -17,7 +18,7 @@ func main() {
 		log.Fatalf("Config error: %v", err)
 	}
 
-	if err := migrations.Run(ctx, cfg.ConnStr); err != nil {
+	if err := migrations.Run(ctx, cfg.GetConnStr()); err != nil {
 		log.Fatalf("Migrations failed: %v", err)
 	}
 
